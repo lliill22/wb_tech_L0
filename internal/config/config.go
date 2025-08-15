@@ -7,15 +7,12 @@ import (
 )
 
 type Config struct {
-	Service  Service
-	Postgres Postgres
 	Kafka    Kafka
-	Logger   log.Logger
+	Postgres Postgres
 }
 
 type Service struct {
 	Port string `env:"SERVICE_PORT"`
-	Name string `env:"SERVICE_NAME"`
 }
 
 type Postgres struct {
@@ -27,14 +24,14 @@ type Postgres struct {
 }
 
 type Kafka struct {
-	Host      string `env:"KAFKA_HOST"`
-	Port      string `env:"KAFKA_PORT"`
-	UserTopic string `env:"USER_POST_CREATED"`
+	KafkaAddress  string `env:"KAFKA_ADDRESS"`
+	Topic         string `env:"KAFKA_TOPIC"`
+	ConsumerGroup string `env:"KAFKA_CONS_GROUP"`
 }
 
-func MustLoad() *Config {
-	cfg := &Config{}
-	err := cleanenv.ReadEnv(cfg)
+func MustLoad() Config {
+	cfg := Config{}
+	err := cleanenv.ReadEnv(&cfg)
 	if err != nil {
 		log.Fatalf("Can not read env variables: %s", err)
 	}
