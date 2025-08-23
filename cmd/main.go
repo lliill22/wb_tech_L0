@@ -19,15 +19,16 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	cache := storage.NewCache()
-	db, err := storage.NewDB(conf.Postgres)
+	db, err := storage.NewOrderRepository(conf.OrderRepository)
 	if err != nil {
 		log.Fatal(err)
 	}
 	service := service.NewService(&service.ServiceConfig{
 		Cache:         cache,
 		KafkaConsumer: c,
-		DB:            db,
+		OrderRepo:     db,
 	})
 
 	service.StartConsumer()

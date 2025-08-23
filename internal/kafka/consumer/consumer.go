@@ -3,6 +3,7 @@ package kafka
 import (
 	"log"
 	"wb_tech_L0/internal/config"
+	"wb_tech_L0/internal/handlers"
 	"wb_tech_L0/internal/storage"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
@@ -13,17 +14,13 @@ const (
 	noTimeout      = -1
 )
 
-type Handler interface {
-	HandleMessage(message []byte, offset kafka.Offset, cache *storage.Cache) error
-}
-
 type Consumer struct {
 	consumer *kafka.Consumer
-	handler  Handler
+	handler  handlers.KafkaHandler
 	stop     bool
 }
 
-func NewConsumer(h Handler, conf config.Config) (*Consumer, error) {
+func NewConsumer(h handlers.KafkaHandler, conf config.Config) (*Consumer, error) {
 
 	confMap := &kafka.ConfigMap{
 		"bootstrap.servers":        conf.Kafka.KafkaAddress,
@@ -50,7 +47,7 @@ func NewConsumer(h Handler, conf config.Config) (*Consumer, error) {
 	}, nil
 }
 
-func (c *Consumer) Start(cache *storage.Cache) {
+func (c *Consumer) Start(repo *storage.OrderRepository) {
 	c.stop = false
 	for {
 		if c.stop {
@@ -65,7 +62,7 @@ func (c *Consumer) Start(cache *storage.Cache) {
 			continue
 		}
 
-		if err = c.handler.HandleMessage(kafkaMsg.Value, kafkaMsg.TopicPartition.Offset, cache); err != nil {
+		if err = c.handler.HandleMessage(kafkaMsg.Value, kafkaMsg.TopicPartition.Offset, repo); err != nil {
 			log.Println(err)
 			continue
 		}

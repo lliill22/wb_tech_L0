@@ -7,15 +7,15 @@ import (
 )
 
 type Config struct {
-	Kafka    Kafka
-	Postgres Postgres
+	Kafka           Kafka
+	OrderRepository OrderRepository
 }
 
 type Service struct {
 	Port string `env:"SERVICE_PORT"`
 }
 
-type Postgres struct {
+type OrderRepository struct {
 	User     string `env:"POSTGRES_USER"`
 	Password string `env:"POSTGRES_PASSWORD"`
 	Database string `env:"POSTGRES_DB"`
