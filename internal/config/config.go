@@ -9,6 +9,7 @@ import (
 type Config struct {
 	Kafka           Kafka
 	OrderRepository OrderRepository
+	Service         Service
 }
 
 type Service struct {

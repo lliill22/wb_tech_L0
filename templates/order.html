@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Order Lookup</title>
+</head>
+<body>
+    <h2>Поиск заказа</h2>
+    <input type="text" id="orderId" placeholder="Введите order_uid" />
+    <button onclick="getOrder()">Найти</button>
+
+    <pre id="result"></pre>
+
+    <script>
+        async function getOrder() {
+            const orderId = document.getElementById("orderId").value.trim();
+            if (!orderId) {
+                alert("Введите order_uid");
+                return;
+            }
+
+            try {
+                const response = await fetch("/order/" + orderId);
+                if (!response.ok) {
+                    throw new Error("Ошибка: " + response.status);
+                }
+                const data = await response.json();
+                document.getElementById("result").textContent = JSON.stringify(data, null, 2);
+            } catch (err) {
+                document.getElementById("result").textContent = err.message;
+            }
+        }
+    </script>
+</body>
+</html>

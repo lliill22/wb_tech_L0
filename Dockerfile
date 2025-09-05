@@ -1,16 +1,11 @@
 # ---------- Стадия сборки ----------
 FROM golang:1.24.5 AS builder
 
-# Устанавливаем рабочую директорию внутри контейнера
 WORKDIR /app
 
-# Копируем go.mod и go.sum (для кэширования зависимостей)
 COPY go.mod go.sum ./
-
-# Загружаем зависимости
 RUN go mod download
 
-# Копируем остальной код
 COPY . .
 
 # Собираем бинарник
@@ -21,8 +16,11 @@ FROM debian:12-slim
 
 WORKDIR /app
 
-# Копируем бинарник из стадии сборки
+# Копируем бинарник
 COPY --from=builder /app/main .
 
-# Запускаем приложение
+# Копируем шаблоны (и при необходимости статику)
+COPY --from=builder /app/templates ./templates
+# COPY --from=builder /app/static ./static  # если понадобится
+
 CMD ["./main"]

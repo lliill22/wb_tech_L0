@@ -3,7 +3,6 @@ package kafka
 import (
 	"log"
 	"wb_tech_L0/internal/config"
-	"wb_tech_L0/internal/handlers"
 	"wb_tech_L0/internal/storage"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
@@ -14,13 +13,17 @@ const (
 	noTimeout      = -1
 )
 
+type MessageHandler interface {
+	HandleMessage(value []byte, offset kafka.Offset, repo *storage.OrderRepository) error
+}
+
 type Consumer struct {
 	consumer *kafka.Consumer
-	handler  handlers.KafkaHandler
+	handler  MessageHandler
 	stop     bool
 }
 
-func NewConsumer(h handlers.KafkaHandler, conf config.Config) (*Consumer, error) {
+func NewConsumer(h MessageHandler, conf config.Config) (*Consumer, error) {
 
 	confMap := &kafka.ConfigMap{
 		"bootstrap.servers":        conf.Kafka.KafkaAddress,
@@ -49,29 +52,31 @@ func NewConsumer(h handlers.KafkaHandler, conf config.Config) (*Consumer, error)
 
 func (c *Consumer) Start(repo *storage.OrderRepository) {
 	c.stop = false
-	for {
-		if c.stop {
-			break
-		}
-		kafkaMsg, err := c.consumer.ReadMessage(noTimeout)
-		if err != nil {
-			log.Println(err)
-		}
+	go func() {
+		for {
+			if c.stop {
+				break
+			}
+			kafkaMsg, err := c.consumer.ReadMessage(noTimeout)
+			if err != nil {
+				log.Println(err)
+			}
 
-		if kafkaMsg == nil {
-			continue
-		}
+			if kafkaMsg == nil {
+				continue
+			}
 
-		if err = c.handler.HandleMessage(kafkaMsg.Value, kafkaMsg.TopicPartition.Offset, repo); err != nil {
-			log.Println(err)
-			continue
-		}
+			if err = c.handler.HandleMessage(kafkaMsg.Value, kafkaMsg.TopicPartition.Offset, repo); err != nil {
+				log.Println(err)
+				continue
+			}
 
-		if _, err = c.consumer.StoreMessage(kafkaMsg); err != nil {
-			log.Println(err)
-			continue
+			if _, err = c.consumer.StoreMessage(kafkaMsg); err != nil {
+				log.Println(err)
+				continue
+			}
 		}
-	}
+	}()
 }
 
 func (c *Consumer) Stop() error {

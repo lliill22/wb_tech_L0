@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"log"
 	kafka "wb_tech_L0/internal/kafka/consumer"
 	"wb_tech_L0/internal/storage"
 )
@@ -23,7 +24,7 @@ type ServiceConfig struct {
 	OrderRepo     *storage.OrderRepository
 }
 
-func NewService(cfg *ServiceConfig) ServiceImpl {
+func NewService(cfg *ServiceConfig) *Service {
 	return &Service{
 		cache:         cfg.Cache,
 		kafkaConsumer: cfg.KafkaConsumer,
@@ -32,25 +33,26 @@ func NewService(cfg *ServiceConfig) ServiceImpl {
 }
 
 func (s *Service) StartConsumer() {
+	log.Println("start consumer")
 	go s.kafkaConsumer.Start(s.orderRepo)
 }
 
 func (s *Service) StopConsumer() error {
+	log.Println("stop consumer")
 	return s.kafkaConsumer.Stop()
 }
 
-func (s *Service) GetOrder(orderId string) (storage.Order, error) {
+func (s *Service) GetOrder(orderId string) (*storage.Order, error) {
 	if order, ok := s.cache.Get(orderId); ok {
 		return order, nil
 	}
 
-	ctx := context.Background()
-	order, err := s.orderRepo.GetByUID(ctx, orderId)
+	order, err := s.orderRepo.GetByUID(context.Background(), orderId)
 	if err != nil {
-		return storage.Order{}, err
+		return nil, err
 	}
 
 	s.cache.Set(orderId, *order)
 
-	return *order, nil
+	return order, nil
 }

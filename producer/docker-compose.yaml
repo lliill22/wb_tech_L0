@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
@@ -7,6 +9,7 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
     ports:
       - "2181:2181"
+
   kafka:
     image: confluentinc/cp-kafka:7.5.0
     container_name: kafka
@@ -35,41 +38,3 @@ services:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
       KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
-
-  postgres:
-    image: postgres:latest
-    container_name: postgres
-    restart: always
-    environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: orders
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-
-  my-go-app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "8081:8081"
-    depends_on:
-      - kafka
-      - postgres
-    environment:
-      - SERVICE_PORT=:8081
-      - KAFKA_ADDRESS=kafka:9092
-      - KAFKA_TOPIC=orders
-      - KAFKA_CONS_GROUP=order-group
-      - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=orders
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
-    restart: unless-stopped
-
-volumes:
-  postgres_data:

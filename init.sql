@@ -21,7 +21,8 @@ CREATE TABLE deliveries (
     city VARCHAR,
     address VARCHAR,
     region VARCHAR,
-    email VARCHAR
+    email VARCHAR,
+    CONSTRAINT deliveries_order_uid_key UNIQUE(order_uid)
 );
 
 CREATE TABLE payments (
@@ -36,7 +37,8 @@ CREATE TABLE payments (
     bank VARCHAR,
     delivery_cost INT,
     goods_total INT,
-    custom_fee INT
+    custom_fee INT,
+    CONSTRAINT payments_order_uid_key UNIQUE(order_uid)
 );
 
 CREATE TABLE items (
@@ -52,5 +54,6 @@ CREATE TABLE items (
     total_price INT,
     nm_id INT,
     brand VARCHAR,
-    status INT
+    status INT,
+    CONSTRAINT items_order_uid_chrt_id_key UNIQUE(order_uid, chrt_id)
 );

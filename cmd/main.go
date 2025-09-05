@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 	"wb_tech_L0/internal/config"
 	"wb_tech_L0/internal/handlers"
 	kafka "wb_tech_L0/internal/kafka/consumer"
@@ -13,30 +15,52 @@ import (
 )
 
 func main() {
-	conf := config.MustLoad()
+	cfg := config.MustLoad()
+	ctx, stop := context.WithCancel(context.Background())
+	defer stop()
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+
 	h := handlers.NewHandler()
-	c, err := kafka.NewConsumer(h, conf)
+
+	repo, err := storage.NewOrderRepository(cfg.OrderRepository)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer repo.Close()
+
+	cache, err := storage.NewCache(context.Background(), repo)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	cache := storage.NewCache()
-	db, err := storage.NewOrderRepository(conf.OrderRepository)
+	c, err := kafka.NewConsumer(h, cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
-	service := service.NewService(&service.ServiceConfig{
+
+	serviceCfg := &service.ServiceConfig{
 		Cache:         cache,
 		KafkaConsumer: c,
-		OrderRepo:     db,
-	})
+		OrderRepo:     repo,
+	}
 
-	service.StartConsumer()
-	sigChan := make(chan os.Signal, 1)
+	srv := service.NewService(serviceCfg)
+	srv.StartConsumer()
 
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	r := handlers.NewRouter(cfg.Service, srv)
+	go r.Start()
 
-	<-sigChan
-	log.Fatal(service.StopConsumer().Error())
+	sig := <-sigCh
+	log.Printf("got signal: %s, shutting down...", sig)
 
+	srv.StopConsumer()
+
+	shutdownCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	if err := r.Close(shutdownCtx); err != nil {
+		log.Printf("http shutdown error: %v", err)
+	}
+	log.Println("shutdown complete")
 }

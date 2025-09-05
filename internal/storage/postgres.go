@@ -14,18 +14,22 @@ const (
 			order_uid, track_number, entry, locale, internal_signature, customer_id,
 			delivery_service, shardkey, sm_id, date_created, oof_shard
 		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+		ON CONFLICT (order_uid) DO NOTHING;
 	`
 	InsertDeliveryQuery = `
 		INSERT INTO deliveries (order_uid, name, phone, zip, city, address, region, email)
 		VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+		ON CONFLICT (order_uid) DO NOTHING;
 	`
 	InsertPaymentQuery = `
 		INSERT INTO payments (order_uid, transaction, request_id, currency, provider, amount, payment_dt, bank, delivery_cost, goods_total, custom_fee)
 		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+		ON CONFLICT (order_uid) DO NOTHING;
 	`
 	InsertItemQuery = `
 		INSERT INTO items (order_uid, chrt_id, track_number, price, rid, name, sale, size, total_price, nm_id, brand, status)
 		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+		ON CONFLICT (order_uid, chrt_id) DO NOTHING;
 	`
 	GetOrderQuery = `
 		SELECT order_uid, track_number, entry, locale, internal_signature, customer_id,
@@ -56,6 +60,10 @@ func NewOrderRepository(cfg config.OrderRepository) (*OrderRepository, error) {
 		return nil, err
 	}
 	return &OrderRepository{db: pgpool}, nil
+}
+
+func (r *OrderRepository) Close() {
+	r.db.Close()
 }
 
 func (r *OrderRepository) Insert(ctx context.Context, order *Order) error {
@@ -155,4 +163,34 @@ func (r *OrderRepository) GetByUID(ctx context.Context, uid string) (*Order, err
 	}
 
 	return &order, nil
+}
+
+func (r *OrderRepository) GetAll(ctx context.Context) ([]Order, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT order_uid FROM orders
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var orders []Order
+	for rows.Next() {
+		var uid string
+		if err := rows.Scan(&uid); err != nil {
+			return nil, err
+		}
+
+		order, err := r.GetByUID(ctx, uid)
+		if err != nil {
+			return nil, err
+		}
+		orders = append(orders, *order)
+	}
+
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+
+	return orders, nil
 }
